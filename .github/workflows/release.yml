@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.FINOS_GITHUB_TOKEN }}
 
@@ -41,34 +41,17 @@ jobs:
           git config --global user.email "37706051+finos-admin@users.noreply.github.com"
           git config --global user.name "FINOS Administrator"
 
-      - name: Set up Maven Central
-        uses: actions/setup-java@v2
+      - name: Set up JDK
+        uses: actions/setup-java@v4
         with:
-          distribution: "zulu"
-          java-version: "11"
+          distribution: 'temurin'
+          java-version: 17
+          java-package: jdk
           server-id: ossrh
           server-username: CI_DEPLOY_USERNAME
           server-password: CI_DEPLOY_PASSWORD
           gpg-private-key: ${{ secrets.CI_GPG_PRIVATE_KEY }}
           gpg-passphrase: CI_GPG_PASSPHRASE
-
-      - name: Get Yarn cache directory path
-        id: yarn-cache-dir-path
-        run: echo "::set-output name=dir::$(yarn config get cacheFolder)"
-
-      - name: Setup Yarn cache
-        uses: actions/cache@v2.1.6
-        id: yarn-cache
-        with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
-
-      - name: Setup Node
-        uses: actions/setup-node@v2.4.0
-        with:
-          node-version: 14.x
 
       - name: Compute next development version
         run: |
@@ -79,8 +62,17 @@ jobs:
           developmentVersion="${a[0]}.${a[1]}.${nextPatch}-SNAPSHOT"
           echo "DEVELOPMENT_VERSION=${developmentVersion}" >> $GITHUB_ENV
 
+      - name: Collect Workflow Telemetry
+        uses: runforesight/workflow-telemetry-action@v1
+        with:
+          theme: dark
+
       - name: Prepare release
-        run: mvn -B -DpreparationGoals=clean release:prepare -DreleaseVersion=${{ github.event.inputs.releaseVersion }} -DdevelopmentVersion=${{ env.DEVELOPMENT_VERSION }} -P release
+        run: mvn -B -DpreparationGoals=clean release:prepare -DreleaseVersion=${{ github.event.inputs.releaseVersion }} -DdevelopmentVersion=${{ env.DEVELOPMENT_VERSION }} -DargLine="-XX:MaxRAMPercentage=25.0" -DforkCount=3 -DreuseForks=true -Dsurefire.reports.directory=${GITHUB_WORKSPACE}/surefire-reports-aggregate -Dorg.slf4j.simpleLogger.showDateTime=true -Dorg.slf4j.simpleLogger.dateTimeFormat="yyyy-MM-dd HH:mm:ss.SSSZ" -P release
+        env:
+          MAVEN_OPTS: -XX:MaxRAMPercentage=25.0
 
       - name: Perform release
         run: mvn -B release:perform -P release
+        env:
+          MAVEN_OPTS: -XX:MaxRAMPercentage=90.0

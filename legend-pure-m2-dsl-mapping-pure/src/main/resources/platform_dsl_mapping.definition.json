@@ -1,5 +1,0 @@
-{
-  "name" : "platform_dsl_mapping",
-  "pattern" : "(meta::pure::mapping|meta::pure::store|meta::pure::metamodel|meta::pure::runtime)(::.*)?",
-  "dependencies" : ["platform", "platform_functions"]
-}
