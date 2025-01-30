@@ -1,0 +1,7 @@
+{
+  "name": "platform_dsl_graph",
+  "pattern": "(meta::pure::graphFetch|meta::pure::functions::meta)(::.*)?",
+  "dependencies": [
+    "platform"
+  ]
+}
